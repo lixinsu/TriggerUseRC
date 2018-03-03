@@ -30,6 +30,23 @@ def init(tokenizer_class, options):
     Finalize(TOK, TOK.shutdown, exitpriority=100)
 
 
+def my_init(token_class, options):
+    TOK = token_class(**options)
+    return TOK
+
+
+def my_tokenize(token, text):
+    tokens = token.tokenize(text)
+    output = {
+            'words': tokens.words(),
+            'offsets': tokens.offsets(),
+            'pos': tokens.pos(),
+            'lemma': tokens.lemmas(),
+            'ner': tokens.entities(),
+    }
+    return output
+
+
 def tokenize(text):
     """Call the global process tokenizer on the input text."""
     global TOK
@@ -47,6 +64,22 @@ def tokenize(text):
 # ------------------------------------------------------------------------------
 # Process dataset examples
 # ------------------------------------------------------------------------------
+def load_dataset_standard(path):
+    output = {'qids': [], 'questions': [], 'answers': [],
+              'contexts': [], 'qid2cid': []}
+    with open(path) as f:
+        for l in f:
+            l = l.strip()
+            if not l:
+                continue
+            data = json.loads(l)
+            output['qids'].append(data['qid'])
+            output['questions'].append(data['query'])
+            if 'answers' in data:
+                output['answers'].append(data['answers'])
+            output['contexts'].append(data['passage'])
+            output['qid2cid'].append(len(output['contexts']) - 1)
+    return output
 
 
 def load_dataset(path):
@@ -79,16 +112,21 @@ def find_answer(offsets, begin_offset, end_offset):
 
 def process_dataset(data, tokenizer, workers=None):
     """Iterate processing (tokenize, parse, etc) dataset multithreaded."""
+    print("tokenize questions ")
     tokenizer_class = tokenizers.get_class(tokenizer)
+    #TOK = my_init(tokenizer_class, {'annotators': {'lemma'}})
+    #q_tokens = [my_tokenize(TOK, x) for x in data['questions']]
     make_pool = partial(Pool, workers, initializer=init)
     workers = make_pool(initargs=(tokenizer_class, {'annotators': {'lemma'}}))
     q_tokens = workers.map(tokenize, data['questions'])
     workers.close()
     workers.join()
-
+    print("tokenize contexts ")
     workers = make_pool(
         initargs=(tokenizer_class, {'annotators': {'lemma', 'pos', 'ner'}})
     )
+    #TOK = my_init(tokenizer_class, {'annotators': {'lemma'}})
+    #c_tokens = [my_tokenize(TOK, x) for x in data['contexts']]
     c_tokens = workers.map(tokenize, data['contexts'])
     workers.close()
     workers.join()
@@ -134,13 +172,17 @@ parser.add_argument('--split', type=str, help='Filename for train/dev split',
                     default='SQuAD-v1.1-train')
 parser.add_argument('--workers', type=int, default=None)
 parser.add_argument('--tokenizer', type=str, default='corenlp')
+parser.add_argument('--standard', type=bool, default=False, help='whether in standard format' )
 args = parser.parse_args()
 
 t0 = time.time()
 
 in_file = os.path.join(args.data_dir, args.split + '.json')
 print('Loading dataset %s' % in_file, file=sys.stderr)
-dataset = load_dataset(in_file)
+if not args.standard:
+    dataset = load_dataset(in_file)
+else:
+    dataset = load_dataset_standard(in_file)
 
 out_file = os.path.join(
     args.out_dir, '%s-processed-%s.txt' % (args.split, args.tokenizer)

@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------------------
 
 
+
 def load_data(args, filename, skip_no_answer=False):
     """Load examples from preprocessed file.
     One example per line, JSON encoded.
@@ -46,6 +47,15 @@ def load_data(args, filename, skip_no_answer=False):
     return examples
 
 
+def load_text_standard(filename):
+    texts = {}
+    with open(filename) as f:
+        for l in f:
+            data = json.loads(l)
+            texts[data['qid']] = data['passage']
+    return texts
+
+
 def load_text(filename):
     """Load the paragraphs only of a SQuAD dataset. Store as qid -> text."""
     # Load JSON file
@@ -58,6 +68,15 @@ def load_text(filename):
             for qa in paragraph['qas']:
                 texts[qa['id']] = paragraph['context']
     return texts
+
+
+def load_answers_standard(filename):
+    ans = {}
+    with open(filename) as f:
+        for l in f:
+            data = json.loads(l)
+            ans[data['qid']] = list(map(lambda x:x['text'], data['answers']))
+    return ans
 
 
 def load_answers(filename):

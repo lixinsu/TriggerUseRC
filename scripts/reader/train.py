@@ -45,6 +45,7 @@ def add_train_args(parser):
 
     # Runtime environment
     runtime = parser.add_argument_group('Environment')
+
     runtime.add_argument('--no-cuda', type='bool', default=False,
                          help='Train on CPU, even if GPUs are available.')
     runtime.add_argument('--gpu', type=int, default=-1,
@@ -65,6 +66,8 @@ def add_train_args(parser):
 
     # Files
     files = parser.add_argument_group('Filesystem')
+    files.add_argument('--standard', type=str, default=False,
+                        help='wherther use standard data format')
     files.add_argument('--model-dir', type=str, default=MODEL_DIR,
                        help='Directory for saved models/checkpoints/logs')
     files.add_argument('--model-name', type=str, default='',
@@ -369,10 +372,15 @@ def main(args):
     # 1) Load the original text to retrieve spans from offsets.
     # 2) Load the (multiple) text answers for each question.
     if args.official_eval:
-        dev_texts = utils.load_text(args.dev_json)
+        if args.standard:
+            dev_texts = utils.load_text_standard(args.dev_json)
+        else:
+            dev_texts = utils.load_text(args.dev_json)
         dev_offsets = {ex['id']: ex['offsets'] for ex in dev_exs}
-        dev_answers = utils.load_answers(args.dev_json)
-
+        if args.standard:
+            dev_answers = utils.load_answers_standard(args.dev_json)
+        else:
+            dev_answers = utils.load_answers(args.dev_json)
     # --------------------------------------------------------------------------
     # MODEL
     logger.info('-' * 100)
@@ -496,9 +504,10 @@ def main(args):
             logger.info('Best valid: %s = %.2f (epoch %d, %d updates)' %
                         (args.valid_metric, result[args.valid_metric],
                          stats['epoch'], model.updates))
+            logger.info('save model %s' % args.model_file)
             model.save(args.model_file)
             stats['best_valid'] = result[args.valid_metric]
-
+        model.save(os.path.join(os.path.dirname(args.model_file), str(epoch)+os.path.basename(args.model_file)))
 
 if __name__ == '__main__':
     # Parse cmdline args and setup environment
