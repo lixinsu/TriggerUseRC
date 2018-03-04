@@ -206,16 +206,19 @@ class DocReader(object):
                       for e in ex[:5]]
             target_s = Variable(ex[5].cuda(async=True))
             target_e = Variable(ex[6].cuda(async=True))
+            labels = Variable(ex[8].cuda(async=True))
         else:
             inputs = [e if e is None else Variable(e) for e in ex[:5]]
             target_s = Variable(ex[5])
             target_e = Variable(ex[6])
+            labels = Variable(ex[8])
 
         # Run forward
-        score_s, score_e = self.network(*inputs)
+        pred_score = self.network(*inputs)
+
 
         # Compute loss and accuracies
-        loss = F.nll_loss(score_s, target_s) + F.nll_loss(score_e, target_e)
+        loss = F.nll_loss(pred_score, labels)
 
         # Clear gradients and run backward
         self.optimizer.zero_grad()
@@ -284,23 +287,14 @@ class DocReader(object):
                       for e in ex[:5]]
 
         # Run forward
-        score_s, score_e = self.network(*inputs)
+        pred_score = self.network(*inputs)
 
         # Decode predictions
-        score_s = score_s.data.cpu()
-        score_e = score_e.data.cpu()
-        if candidates:
-            args = (score_s, score_e, candidates, top_n, self.args.max_len)
-            if async_pool:
-                return async_pool.apply_async(self.decode_candidates, args)
-            else:
-                return self.decode_candidates(*args)
-        else:
-            args = (score_s, score_e, top_n, self.args.max_len)
-            if async_pool:
-                return async_pool.apply_async(self.decode, args)
-            else:
-                return self.decode(*args)
+        pred_score = torch.exp(pred_score)
+        pred_score = pred_score.cpu()
+        _ ,pred_label = torch.max(pred_score, 1)
+
+        return pred_score.data.numpy().tolist(), pred_label.data.numpy().tolist()
 
     @staticmethod
     def decode(score_s, score_e, top_n=1, max_len=None):

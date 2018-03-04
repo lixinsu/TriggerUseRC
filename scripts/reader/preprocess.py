@@ -11,6 +11,7 @@ import os
 import sys
 import json
 import time
+import random
 
 from multiprocessing import Pool
 from multiprocessing.util import Finalize
@@ -67,8 +68,9 @@ def tokenize(text):
 def load_dataset_standard(path):
     output = {'qids': [], 'questions': [], 'answers': [],
               'contexts': [], 'qid2cid': []}
+    debug = 10
     with open(path) as f:
-        for l in f:
+        for l in random.sample(f.readlines(), 100000):
             l = l.strip()
             if not l:
                 continue
@@ -131,6 +133,14 @@ def process_dataset(data, tokenizer, workers=None):
     workers.close()
     workers.join()
 
+    labels = []
+    for p, a in zip(data['contexts'], data['answers']):
+        a = a[0]['text']
+        if a in p:
+            labels.append(1)
+        else:
+            labels.append(0)
+
     for idx in range(len(data['qids'])):
         question = q_tokens[idx]['words']
         qlemma = q_tokens[idx]['lemma']
@@ -142,9 +152,10 @@ def process_dataset(data, tokenizer, workers=None):
         ans_tokens = []
         if len(data['answers']) > 0:
             for ans in data['answers'][idx]:
-                found = find_answer(offsets,
-                                    ans['answer_start'],
-                                    ans['answer_start'] + len(ans['text']))
+                #found = find_answer(offsets,
+                #                    ans['answer_start'],
+                #                    ans['answer_start'] + len(ans['text']))
+                found = (0, 0)
                 if found:
                     ans_tokens.append(found)
         yield {
@@ -157,6 +168,7 @@ def process_dataset(data, tokenizer, workers=None):
             'lemma': lemma,
             'pos': pos,
             'ner': ner,
+            'label': labels[idx]
         }
 
 

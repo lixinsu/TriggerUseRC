@@ -21,15 +21,14 @@ def format_pqa(infile, outfile, mode='train'):
                 continue
             for i, p in enumerate(data['passages']):
                 p_text = p['passage_text'].lower()
-                #p_rank = p['rank']
                 p_id = p['passage_id']
+                label = 1 if a in p_text else 0
                 if mode == 'train':
-                    if a in p_text:
-                        fo.write(json.dumps({'qid': "%s-%s" % (qid, p_id), 'passage': p_text, 'query': q, 'answers':[{'text':a, 'answer_start': p_text.find(a)}]}) + '\n')
+                    if len(p_text) > 0:
+                        fo.write(json.dumps({'qid': "%s-%s" % (qid, p_id), 'passage': p_text, 'query': q, 'answers':[{'text':a, 'answer_start': -1}], 'label': label}) + '\n')
                 elif mode == 'test':
                     if len(p_text) > 0:
-                        fo.write(json.dumps({'qid': "%s-%s" % (qid, p_id), 'passage': p_text, 'query': q, 'answers':[{'text':a, 'answer_start': -1}]}) + '\n')
-
+                        fo.write(json.dumps({'qid': "%s-%s" % (qid, p_id), 'passage': p_text, 'query': q, 'answers':[{'text':a, 'answer_start': -1}], 'label': label}) + '\n')
 
 if __name__ == "__main__":
     if len(sys.argv) == 3:

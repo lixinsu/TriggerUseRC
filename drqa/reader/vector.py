@@ -72,8 +72,8 @@ def vectorize(ex, model, single_answer=False):
     else:
         start = [a[0] for a in ex['answers']]
         end = [a[1] for a in ex['answers']]
-
-    return document, features, question, start, end, ex['id']
+    label = torch.LongTensor([ex['label']])
+    return document, features, question, start, end, ex['id'], label
 
 
 def batchify(batch):
@@ -81,8 +81,9 @@ def batchify(batch):
     NUM_INPUTS = 3
     NUM_TARGETS = 2
     NUM_EXTRA = 1
-
-    ids = [ex[-1] for ex in batch]
+    labels = [ex[-1] for ex in batch]
+    labels = torch.cat(labels)
+    ids = [ex[-2] for ex in batch]
     docs = [ex[0] for ex in batch]
     features = [ex[1] for ex in batch]
     questions = [ex[2] for ex in batch]
@@ -110,10 +111,10 @@ def batchify(batch):
         x2_mask[i, :q.size(0)].fill_(0)
 
     # Maybe return without targets
-    if len(batch[0]) == NUM_INPUTS + NUM_EXTRA:
+    if len(batch[0]) == NUM_INPUTS + NUM_EXTRA + 1:
         return x1, x1_f, x1_mask, x2, x2_mask, ids
 
-    elif len(batch[0]) == NUM_INPUTS + NUM_EXTRA + NUM_TARGETS:
+    elif len(batch[0]) == NUM_INPUTS + NUM_EXTRA + NUM_TARGETS + 1:
         # ...Otherwise add targets
         if torch.is_tensor(batch[0][3]):
             y_s = torch.cat([ex[3] for ex in batch])
@@ -124,4 +125,4 @@ def batchify(batch):
     else:
         raise RuntimeError('Incorrect number of inputs per example.')
 
-    return x1, x1_f, x1_mask, x2, x2_mask, y_s, y_e, ids
+    return x1, x1_f, x1_mask, x2, x2_mask, y_s, y_e, ids, labels

@@ -243,36 +243,41 @@ def validate_unofficial(args, data_loader, model, global_stats, mode):
     """Run one full unofficial validation.
     Unofficial = doesn't use SQuAD script.
     """
+    from sklearn.metrics import roc_auc_score
     eval_time = utils.Timer()
-    start_acc = utils.AverageMeter()
-    end_acc = utils.AverageMeter()
-    exact_match = utils.AverageMeter()
+    trigger_acc = utils.AverageMeter()
 
     # Make predictions
+    all_pred = []
+    all_pred_label = []
+    all_gt = []
     examples = 0
     for ex in data_loader:
         batch_size = ex[0].size(0)
-        pred_s, pred_e, _ = model.predict(ex)
-        target_s, target_e = ex[-3:-1]
 
+        pred_score, pred_label = model.predict(ex)
+
+        #target_s, target_e = ex[-3:-1]
+        gt_label = ex[-1]
+        all_pred.extend([x[1] for x in pred_score])
+        all_gt.extend(gt_label)
         # We get metrics for independent start/end and joint start/end
-        accuracies = eval_accuracies(pred_s, target_s, pred_e, target_e)
-        start_acc.update(accuracies[0], batch_size)
-        end_acc.update(accuracies[1], batch_size)
-        exact_match.update(accuracies[2], batch_size)
+        accuracies = eval_accuracies(pred_label, gt_label)
+        trigger_acc.update(accuracies, batch_size)
 
         # If getting train accuracies, sample max 10k
         examples += batch_size
+        # only test train top 10000
         if mode == 'train' and examples >= 1e4:
             break
-
-    logger.info('%s valid unofficial: Epoch = %d | start = %.2f | ' %
-                (mode, global_stats['epoch'], start_acc.avg) +
-                'end = %.2f | exact = %.2f | examples = %d | ' %
-                (end_acc.avg, exact_match.avg, examples) +
+    auc_score = roc_auc_score(all_gt, all_pred)
+    logger.info('%s valid unofficial: Epoch = %d | ' %
+                (mode, global_stats['epoch'], ) +
+                'trigger_auc = %.2f | trigger_acc = %.2f | examples = %d | ' %
+                (auc_score, trigger_acc.avg, examples) +
                 'valid time = %.2f (s)' % eval_time.time())
 
-    return {'exact_match': exact_match.avg}
+    return {'auc': auc_score, 'trigger_acc': trigger_acc.avg}
 
 
 def validate_official(args, data_loader, model, global_stats,
@@ -292,8 +297,8 @@ def validate_official(args, data_loader, model, global_stats,
     # Run through examples
     examples = 0
     for ex in data_loader:
-        ex_id, batch_size = ex[-1], ex[0].size(0)
-        pred_s, pred_e, _ = model.predict(ex)
+        ex_id, batch_size = ex[-2], ex[0].size(0)
+        pred_score, pred_label = model.predict(ex)
 
         for i in range(batch_size):
             s_offset = offsets[ex_id[i]][pred_s[i][0]][0]
@@ -317,40 +322,14 @@ def validate_official(args, data_loader, model, global_stats,
     return {'exact_match': exact_match.avg * 100, 'f1': f1.avg * 100}
 
 
-def eval_accuracies(pred_s, target_s, pred_e, target_e):
+def eval_accuracies(pred_label, gt_label):
     """An unofficial evalutation helper.
     Compute exact start/end/complete match accuracies for a batch.
     """
-    # Convert 1D tensors to lists of lists (compatibility)
-    if torch.is_tensor(target_s):
-        target_s = [[e] for e in target_s]
-        target_e = [[e] for e in target_e]
-
-    # Compute accuracies from targets
-    batch_size = len(pred_s)
-    start = utils.AverageMeter()
-    end = utils.AverageMeter()
-    em = utils.AverageMeter()
-    for i in range(batch_size):
-        # Start matches
-        if pred_s[i] in target_s[i]:
-            start.update(1)
-        else:
-            start.update(0)
-
-        # End matches
-        if pred_e[i] in target_e[i]:
-            end.update(1)
-        else:
-            end.update(0)
-
-        # Both start and end match
-        if any([1 for _s, _e in zip(target_s[i], target_e[i])
-                if _s == pred_s[i] and _e == pred_e[i]]):
-            em.update(1)
-        else:
-            em.update(0)
-    return start.avg * 100, end.avg * 100, em.avg * 100
+    trigger_acc = utils.AverageMeter()
+    for i in range(len(pred_label)):
+        trigger_acc.update(1 if pred_label[i]==gt_label[i] else 0)
+    return trigger_acc.avg * 100
 
 
 # ------------------------------------------------------------------------------
@@ -495,19 +474,19 @@ def main(args):
         result = validate_unofficial(args, dev_loader, model, stats, mode='dev')
 
         # Validate official
-        if args.official_eval:
-            result = validate_official(args, dev_loader, model, stats,
-                                       dev_offsets, dev_texts, dev_answers)
+        #if args.official_eval:
+        #    result = validate_official(args, dev_loader, model, stats,
+        #                               dev_offsets, dev_texts, dev_answers)
 
         # Save best valid
-        if result[args.valid_metric] > stats['best_valid']:
+        if result['auc'] > stats['best_valid']:
             logger.info('Best valid: %s = %.2f (epoch %d, %d updates)' %
-                        (args.valid_metric, result[args.valid_metric],
+                        ('auc_score', result['auc'],
                          stats['epoch'], model.updates))
             logger.info('save model %s' % args.model_file)
             model.save(args.model_file)
-            stats['best_valid'] = result[args.valid_metric]
-        model.save(os.path.join(os.path.dirname(args.model_file), str(epoch)+os.path.basename(args.model_file)))
+            stats['best_valid'] = result['auc']
+        #model.save(os.path.join(os.path.dirname(args.model_file), str(epoch)+os.path.basename(args.model_file)))
 
 if __name__ == '__main__':
     # Parse cmdline args and setup environment
