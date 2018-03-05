@@ -126,16 +126,18 @@ class Predictor(object):
 
         # Build the batch and run it through the model
         batch_exs = batchify([vectorize(e, self.model) for e in examples])
-        s, e, score = self.model.predict(batch_exs, candidates, top_n)
+        pred_score, pred_label = self.model.predict(batch_exs, candidates, top_n)
 
         # Retrieve the predicted spans
         results = []
-        for i in range(len(s)):
-            predictions = []
-            for j in range(len(s[i])):
-                span = d_tokens[i].slice(s[i][j], e[i][j] + 1).untokenize()
-                predictions.append((span, score[i][j]))
-            results.append(predictions)
+        # for i in range(len(s)):
+        #     predictions = []
+        #     for j in range(len(s[i])):
+        #         span = d_tokens[i].slice(s[i][j], e[i][j] + 1).untokenize()
+        #         predictions.append((span, score[i][j]))
+        #     results.append(predictions)
+        for i in range(len(pred_score)):
+            results.append(pred_score[i])
         return results
 
     def cuda(self):

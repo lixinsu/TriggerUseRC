@@ -243,7 +243,7 @@ def validate_unofficial(args, data_loader, model, global_stats, mode):
     """Run one full unofficial validation.
     Unofficial = doesn't use SQuAD script.
     """
-    from sklearn.metrics import roc_auc_score
+    from sklearn.metrics import roc_auc_score, f1_score
     eval_time = utils.Timer()
     trigger_acc = utils.AverageMeter()
 
@@ -261,6 +261,7 @@ def validate_unofficial(args, data_loader, model, global_stats, mode):
         gt_label = ex[-1]
         all_pred.extend([x[1] for x in pred_score])
         all_gt.extend(gt_label)
+        all_pred_label.extend(pred_label)
         # We get metrics for independent start/end and joint start/end
         accuracies = eval_accuracies(pred_label, gt_label)
         trigger_acc.update(accuracies, batch_size)
@@ -271,10 +272,12 @@ def validate_unofficial(args, data_loader, model, global_stats, mode):
         if mode == 'train' and examples >= 1e4:
             break
     auc_score = roc_auc_score(all_gt, all_pred)
+    f1_scores = f1_score(all_gt, all_pred_label,average=None)
+
     logger.info('%s valid unofficial: Epoch = %d | ' %
                 (mode, global_stats['epoch'], ) +
-                'trigger_auc = %.2f | trigger_acc = %.2f | examples = %d | ' %
-                (auc_score, trigger_acc.avg, examples) +
+                'neg_f1 = %.2f | pos_f1 = %.2f |  trigger_auc = %.2f | trigger_acc = %.2f | examples = %d | ' %
+                (f1_scores[0], f1_scores[1], auc_score, trigger_acc.avg, examples) +
                 'valid time = %.2f (s)' % eval_time.time())
 
     return {'auc': auc_score, 'trigger_acc': trigger_acc.avg}

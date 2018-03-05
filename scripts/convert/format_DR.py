@@ -7,8 +7,12 @@ import sys
 def format_pqa(infile, outfile, mode='train'):
     print(outfile)
     fo = open(outfile, 'w')
+    #debug = 1000
     with open(infile) as infp:
         for line in infp:
+            #if debug == 0:
+            #    break
+            #debug -= 1
             line = line.strip()
             if not line:
                 continue

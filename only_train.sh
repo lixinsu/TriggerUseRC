@@ -4,7 +4,7 @@ set -ex
 
 # format data to pqa 
 TASK=$1
-MODEL=all_data
+MODEL=new_sample_data
 
 python3 scripts/reader/train.py  --num-epochs 40 \
                     --model-dir data/models/${TASK} \

@@ -80,45 +80,29 @@ if args.cuda:
 # Read in dataset and make predictions.
 # ------------------------------------------------------------------------------
 
-if not args.standard:
-    examples = []
-    qids = []
-    with open(args.dataset) as f:
-        data = json.load(f)['data']
-        for article in data:
-            for paragraph in article['paragraphs']:
-                context = paragraph['context']
-                for qa in paragraph['qas']:
-                    qids.append(qa['id'])
-                    examples.append((context, qa['question']))
-else:
-    examples = []
-    qids = []
-    with open(args.dataset) as f:
-        for l in f:
-            l = l.strip()
-            if not l:
-                continue
-            data = json.loads(l)
-            qids.append(data['qid'])
-            examples.append((data['passage'].lower(), data['query'].lower()))
+examples = []
+qids = []
+with open(args.dataset) as f:
+    for l in f:
+        l = l.strip()
+        if not l:
+            continue
+        data = json.loads(l)
+        qids.append(data['qid'])
+        examples.append((data['passage'].lower(), data['query'].lower()))
+
 
 if not os.path.exists(args.out_dir):
     os.makedirs(args.out_dir)
-pickle.dump([qids, examples], open(os.path.join(args.out_dir, '%s-pred_origin.pkl' % args.task ), 'wb'))
+#pickle.dump([qids, examples], open(os.path.join(args.out_dir, '%s-pred_origin.pkl' % args.task ), 'wb'))
 results = {}
 for i in tqdm(range(0, len(examples), args.batch_size)):
     predictions = predictor.predict_batch(
         examples[i:i + args.batch_size], top_n=args.top_n
     )
     for j in range(len(predictions)):
-        # Official eval expects just a qid --> span
-        if args.official:
-            results[qids[i + j]] = predictions[j][0][0]
+        results[qids[i + j]] = predictions[j]
 
-        # Otherwise we store top N and scores for debugging.
-        else:
-            results[qids[i + j]] = [(p[0], float(p[1])) for p in predictions[j]]
 
 
 model = os.path.splitext(os.path.basename(args.model or 'default'))[0]

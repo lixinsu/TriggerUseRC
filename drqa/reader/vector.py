@@ -81,9 +81,6 @@ def batchify(batch):
     NUM_INPUTS = 3
     NUM_TARGETS = 2
     NUM_EXTRA = 1
-    labels = [ex[-1] for ex in batch]
-    labels = torch.cat(labels)
-    ids = [ex[-2] for ex in batch]
     docs = [ex[0] for ex in batch]
     features = [ex[1] for ex in batch]
     questions = [ex[2] for ex in batch]
@@ -111,10 +108,15 @@ def batchify(batch):
         x2_mask[i, :q.size(0)].fill_(0)
 
     # Maybe return without targets
-    if len(batch[0]) == NUM_INPUTS + NUM_EXTRA + 1:
+    if len(batch[0]) == NUM_INPUTS + NUM_EXTRA:
+        ids = [ex[-1] for ex in batch]
         return x1, x1_f, x1_mask, x2, x2_mask, ids
 
     elif len(batch[0]) == NUM_INPUTS + NUM_EXTRA + NUM_TARGETS + 1:
+
+        ids = [ex[-2] for ex in batch]
+        labels = [ex[-1] for ex in batch]
+        labels = torch.cat(labels)
         # ...Otherwise add targets
         if torch.is_tensor(batch[0][3]):
             y_s = torch.cat([ex[3] for ex in batch])
