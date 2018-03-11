@@ -56,9 +56,9 @@ class StackedBRNN(nn.Module):
         if x_mask.data.sum() == 0:
             # No padding necessary.
             output = self._forward_unpadded(x, x_mask)
-        elif self.padding or not self.training:
-            # Pad if we care or if its during eval.
-            output = self._forward_padded(x, x_mask)
+#        elif self.padding or not self.training:
+#            # Pad if we care or if its during eval.
+#            output = self._forward_padded(x, x_mask)
         else:
             # We don't care.
             output = self._forward_unpadded(x, x_mask)

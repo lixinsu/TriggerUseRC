@@ -8,6 +8,7 @@
 
 import numpy as np
 import logging
+import random
 import unicodedata
 
 from torch.utils.data import Dataset
@@ -98,6 +99,9 @@ class ReaderDataset(Dataset):
     def __getitem__(self, index):
         return vectorize(self.examples[index], self.model, self.single_answer)
 
+    def labels(self):
+        return [x['label'] for x in self.examples]
+
     def lengths(self):
         return [(len(ex['document']), len(ex['question']))
                 for ex in self.examples]
@@ -110,17 +114,30 @@ class ReaderDataset(Dataset):
 
 class SortedBatchSampler(Sampler):
 
-    def __init__(self, lengths, batch_size, shuffle=True):
+    def __init__(self, lengths, labels, batch_size, shuffle=True):
         self.lengths = lengths
         self.batch_size = batch_size
         self.shuffle = shuffle
+        print(labels)
+        self.pos_indices = [i for i,ex in enumerate(labels) if ex==1]
+        self.neg_indices = [i for i,ex in enumerate(labels) if ex==0]
 
     def __iter__(self):
-        lengths = np.array(
-            [(-l[0], -l[1], np.random.random()) for l in self.lengths],
-            dtype=[('l1', np.int_), ('l2', np.int_), ('rand', np.float_)]
-        )
-        indices = np.argsort(lengths, order=('l1', 'l2', 'rand'))
+
+        self.pos_num = len(self.pos_indices)
+        self.neg_num = len(self.neg_indices)
+        dup = []
+        while self.pos_num > self.neg_num:
+            dup.extend(random.sample(self.neg_indices, min(self.pos_num - self.neg_num, len(self.neg_indices))))
+            self.neg_num = len(dup) + len(self.neg_indices)
+        while self.neg_num > self.pos_num:
+            dup.extend(random.sample(self.pos_indices, min(len(self.pos_indices), self.neg_num-self.pos_num)))
+
+            self.pos_num = len(dup) + len(self.pos_indices)
+
+        indices = self.pos_indices + self.neg_indices + dup
+        print(len(indices))
+        random.shuffle(indices)
         batches = [indices[i:i + self.batch_size]
                    for i in range(0, len(indices), self.batch_size)]
         if self.shuffle:
@@ -128,4 +145,4 @@ class SortedBatchSampler(Sampler):
         return iter([i for batch in batches for i in batch])
 
     def __len__(self):
-        return len(self.lengths)
+        return 2 * max(len(self.pos_indices), len(self.neg_indices))

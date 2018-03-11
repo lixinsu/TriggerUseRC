@@ -25,6 +25,7 @@ def calc_metrics(gt, pred):
     return f1s, recalls, precisions, cmatrix
 
 def eval_result(preds, origins):
+    from sklearn import metrics
     qid2res = defaultdict(list)
     id2res = {}
     id2gt = {}
@@ -58,6 +59,11 @@ def eval_result(preds, origins):
     print('f1', f1s)
     print('recall', recalls)
     print('precision', precisions)
+    print('average precision score %s' % metrics.average_precision_score(gts, pred_scores, average=None))
+    precision, recall, thresholds = metrics.precision_recall_curve(gts, pred_scores)
+    print('AUC of PR %s ' % metrics.auc(recall, precision))
+    fpr, tpr, thresholds = metrics.roc_curve(gts, pred_scores, pos_label=1)
+    print('AUC of ROC %s ' % metrics.auc(fpr, tpr))
     print('ROC curve', roc_auc_score(gts, pred_scores))
     print('cmatrix')
     print(cmatrix)
@@ -81,6 +87,11 @@ def eval_result(preds, origins):
     print('f1', f1s)
     print('recall', recalls)
     print('precision', precisions)
+    print('average precision score %s' % metrics.average_precision_score(gts, pred_scores, average=None))
+    precision, recall, thresholds = metrics.precision_recall_curve(gts, pred_scores)
+    print('AUC of PR %s ' % metrics.auc(recall,precision))
+    fpr, tpr, thresholds = metrics.roc_curve(gts, pred_scores, pos_label=1)
+    print('AUC of ROC %s ' % metrics.auc(fpr, tpr))
     print('ROC curve', roc_auc_score(gts, pred_scores))
     print('cmatrix')
     print(cmatrix)

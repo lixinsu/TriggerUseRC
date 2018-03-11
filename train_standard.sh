@@ -4,11 +4,12 @@ set -ex
 
 # format data to pqa 
 TASK=$1
-MODEL=all_data
+#MODEL=use_sample_data
+MODEL=balance_sample_data
 
 for d in train val
 do
-    python3 scripts/convert/format_DR.py data/${TASK}/${d}.json data/${TASK}/DR_${d}.json
+    python3 scripts/convert/format_DR.py data/${TASK}/sample_${d}.json data/${TASK}/DR_${d}.json
 done
 
 for d in train val

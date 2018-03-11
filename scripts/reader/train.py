@@ -425,6 +425,7 @@ def main(args):
     train_dataset = data.ReaderDataset(train_exs, model, single_answer=True)
     if args.sort_by_len:
         train_sampler = data.SortedBatchSampler(train_dataset.lengths(),
+                                                train_dataset.labels(),
                                                 args.batch_size,
                                                 shuffle=True)
     else:
@@ -440,6 +441,7 @@ def main(args):
     dev_dataset = data.ReaderDataset(dev_exs, model, single_answer=False)
     if args.sort_by_len:
         dev_sampler = data.SortedBatchSampler(dev_dataset.lengths(),
+                                                dev_dataset.labels(),
                                               args.test_batch_size,
                                               shuffle=False)
     else:

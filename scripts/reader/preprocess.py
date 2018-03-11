@@ -70,8 +70,8 @@ def load_dataset_standard(path):
               'contexts': [], 'qid2cid': []}
     debug = 10
     with open(path) as f:
-        read_lines = random.sample(f.readlines(), 100000)
-        for l in read_lines:
+        #read_lines = random.sample(f.readlines(), 100000)
+        for l in f:
             l = l.strip()
             if not l:
                 continue
