@@ -100,6 +100,7 @@ for i in tqdm(range(0, len(examples), args.batch_size)):
     predictions = predictor.predict_batch(
         examples[i:i + args.batch_size], top_n=args.top_n
     )
+    print(predictions)
     for j in range(len(predictions)):
         results[qids[i + j]] = predictions[j]
 

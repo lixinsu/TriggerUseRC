@@ -67,7 +67,7 @@ def tokenize(text):
 # ------------------------------------------------------------------------------
 def load_dataset_standard(path):
     output = {'qids': [], 'questions': [], 'answers': [],
-              'contexts': [], 'qid2cid': []}
+            'contexts': [], 'qid2cid': [], 'labels': []}
     debug = 10
     with open(path) as f:
         #read_lines = random.sample(f.readlines(), 100000)
@@ -77,6 +77,7 @@ def load_dataset_standard(path):
                 continue
             data = json.loads(l)
             output['qids'].append(data['qid'])
+            output['labels'].append(data['label'])
             output['questions'].append(data['query'])
             if 'answers' in data:
                 output['answers'].append(data['answers'])
@@ -134,13 +135,6 @@ def process_dataset(data, tokenizer, workers=None):
     workers.close()
     workers.join()
 
-    labels = []
-    for p, a in zip(data['contexts'], data['answers']):
-        a = a[0]['text']
-        if a in p:
-            labels.append(1)
-        else:
-            labels.append(0)
 
     for idx in range(len(data['qids'])):
         question = q_tokens[idx]['words']
@@ -156,6 +150,7 @@ def process_dataset(data, tokenizer, workers=None):
                 #found = find_answer(offsets,
                 #                    ans['answer_start'],
                 #                    ans['answer_start'] + len(ans['text']))
+                # FAKE position for latter use, I don't want remove these logic from several files, I do so.
                 found = (0, 0)
                 if found:
                     ans_tokens.append(found)
@@ -169,7 +164,7 @@ def process_dataset(data, tokenizer, workers=None):
             'lemma': lemma,
             'pos': pos,
             'ner': ner,
-            'label': labels[idx]
+            'label': data['labels'][idx]
         }
 
 

@@ -25,6 +25,7 @@ def format_pqa(infile, outfile, mode='train'):
     print(outfile)
     fo = open(outfile, 'w')
     #debug = 1000
+    cnt_p, total = 0.0, 0.0
     with open(infile) as infp:
         for line in infp:
             #if debug == 0:
@@ -34,22 +35,27 @@ def format_pqa(infile, outfile, mode='train'):
             if not line:
                 continue
             data = json.loads(line)
-            a = data['answer'].lower()
-            q = data['query'].lower()
+            a = strQ2B(data['answer'].lower())
+            q = strQ2B(data['query'].lower())
             qid = data['query_id']
             if len(a.strip()) == 0 or len(q)==0:
                 print('error data format')
                 continue
             for i, p in enumerate(data['passages']):
-                p_text = p['passage_text'].lower()
+                p_text = strQ2B(p['passage_text'])
                 p_id = p['passage_id']
                 label = 1 if a in p_text else 0
+                if label == 1:
+                    cnt_p += 1
+                total +=1
                 if mode == 'train':
                     if len(p_text) > 0:
-                        fo.write(json.dumps({'qid': "%s-%s" % (qid, p_id), 'passage': p_text, 'query': q, 'answers':[{'text':a, 'answer_start': -1}], 'label': label}) + '\n')
+                        fo.write(json.dumps({'qid': "%s-%s" % (qid, p_id), 'passage': p_text, 'query': q, 'answers':[{'text':a, 'answer_start': -1}], 'label': label}, ensure_ascii=False) + '\n')
                 elif mode == 'test':
                     if len(p_text) > 0:
-                        fo.write(json.dumps({'qid': "%s-%s" % (qid, p_id), 'passage': p_text, 'query': q, 'answers':[{'text':a, 'answer_start': -1}], 'label': label}) + '\n')
+                        fo.write(json.dumps({'qid': "%s-%s" % (qid, p_id), 'passage': p_text, 'query': q, 'answers':[{'text':a, 'answer_start': -1}], 'label': label}, ensure_acii=False) + '\n')
+    print('pos label rate: %.3f ' % (cnt_p / total))
+
 
 if __name__ == "__main__":
     if len(sys.argv) == 3:

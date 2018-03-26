@@ -294,7 +294,7 @@ class DocReader(object):
         pred_score = pred_score.cpu()
         _ ,pred_label = torch.max(pred_score, 1)
 
-        return pred_score.data.numpy().tolist(), pred_label.data.numpy().tolist()
+        return pred_score.data.tolist(), pred_label.data.tolist()
 
     @staticmethod
     def decode(score_s, score_e, top_n=1, max_len=None):
